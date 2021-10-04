@@ -80,6 +80,33 @@ app.get('/login-callback', async (req, res) => {
     }
 });
 
+app.get('refresh-token', async (req, res) => {
+    const { refresh_token } = req.query;
+
+    try {
+        const response= await axios({
+            method: 'POST',
+            url: 'https://accounts.spotify.com/api/token',
+            data: querystring.stringify({
+                grant_type: 'refresh_token',
+                refresh_token,
+            }),
+            headers: {
+                'content_type': 'application/x-www-form-urlencoded',
+                Authorization: `Basic ${new Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64')}`,
+            },
+        });
+
+        if (response.status === 200) {
+            res.send(response.data)
+        } else {
+            res.send(response)
+        }
+    } catch (error) {
+        res.send(error)
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Listening at http://localhost:${PORT}`)
 });
