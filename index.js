@@ -31,37 +31,53 @@ app.get('/login', (req, res) => {
     res.redirect(`https://accounts.spotify.com/authorize?${queryParams}`);
 });
 
-app.get('/login-callback', (req, res) => {
+app.get('/login-callback', async (req, res) => {
     const code = req.query.code || null;
 
-    // todo use async/await instead
-    axios({
-        method: 'POST',
-        url: 'https://accounts.spotify.com/api/token',
-        data: querystring.stringify({
-            grant_type: 'authorization_code',
-            code,
-            redirect_uri: REDIRECT_URI,
-        }),
-        headers: {
-            'content-type': 'application/x-www-form-urlencoded',
-            Authorization: `Basic ${new Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64')}`,
-        },
-    })
-        .then((response) => {
-            if (response.status === 200) {
-                res.send(`
-                    <pre>
-                      ${JSON.stringify(response.data, null, 2)}
-                    </pre>
-                `);
-            } else {
-                res.send(response);
-            }
-        })
-        .catch((error) => {
-            res.send(error)
-        })
+    try {
+        const tokenDataResponse = await axios({
+            method: 'POST',
+            url: 'https://accounts.spotify.com/api/token',
+            data: querystring.stringify({
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: REDIRECT_URI,
+            }),
+            headers: {
+                'content-type': 'application/x-www-form-urlencoded',
+                Authorization: `Basic ${new Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64')}`,
+            },
+        });
+
+
+        if (tokenDataResponse.status !==200) {
+            res.send(tokenDataResponse);
+            return;
+        }
+
+        const { access_token, token_type } = tokenDataResponse.data;
+
+        const userDataResponse = await axios({
+            method: 'GET',
+            url: 'https://api.spotify.com/v1/me',
+            headers: {
+                Authorization: `${token_type} ${access_token}`,
+            },
+        });
+
+        if (userDataResponse.status !== 200) {
+            res.send(userDataResponse);
+            return;
+        }
+
+        res.send(`
+            <pre>
+              ${JSON.stringify(userDataResponse.data, null, 2)}
+            </pre>
+        `);
+    } catch (error) {
+        res.send(error)
+    }
 });
 
 app.listen(PORT, () => {
