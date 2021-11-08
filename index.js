@@ -49,38 +49,24 @@ app.get('/login-callback', async (req, res) => {
             },
         });
 
+        if (tokenDataResponse.status === 200) {
+            const { access_token, refresh_token } = tokenDataResponse.data;
 
-        if (tokenDataResponse.status !==200) {
-            res.send(tokenDataResponse);
-            return;
+            const queryParams = querystring.stringify({
+                access_token,
+                refresh_token,
+            });
+
+            res.redirect(`http://localhost:3000/?${queryParams}`)
+        } else {
+            res.redirect(`/${querystring.stringify({ error: 'invalid_token' })}`)
         }
-
-        const { access_token, token_type } = tokenDataResponse.data;
-
-        const userDataResponse = await axios({
-            method: 'GET',
-            url: 'https://api.spotify.com/v1/me',
-            headers: {
-                Authorization: `${token_type} ${access_token}`,
-            },
-        });
-
-        if (userDataResponse.status !== 200) {
-            res.send(userDataResponse);
-            return;
-        }
-
-        res.send(`
-            <pre>
-              ${JSON.stringify(userDataResponse.data, null, 2)}
-            </pre>
-        `);
     } catch (error) {
         res.send(error)
     }
 });
 
-app.get('refresh-token', async (req, res) => {
+app.get('/refresh-token', async (req, res) => {
     const { refresh_token } = req.query;
 
     try {
